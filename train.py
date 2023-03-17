@@ -1,19 +1,19 @@
 import os
 import tensorflow as tf
-import tensorflow_datasets as tfds
 from official.projects.movinet.modeling import movinet
 from official.projects.movinet.modeling import movinet_model
 from official.projects.movinet.tools import export_saved_model
 import pathlib
-from utils import download_ufc_101_subset, FrameGenerator
+from utils import FrameGenerator
 
-# Download and Load UCF-101 Data
-URL = 'https://storage.googleapis.com/thumos14_files/UCF101_videos.zip'
-download_dir = pathlib.Path('./UCF101_subset/')
-subset_paths = download_ufc_101_subset(URL, 
-                        num_classes = 10, 
-                        splits = {"train": 30, "test": 20}, 
-                        download_dir = download_dir)
+
+# Load Data
+path_dir = pathlib.Path('dataset')
+subset_paths = {}
+for split_name in os.listdir('dataset'):
+    split_dir = path_dir / split_name
+    subset_paths[split_name] = split_dir
+print(subset_paths)
 
 
 batch_size = 8
@@ -94,7 +94,7 @@ optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
 
 model.compile(loss=loss_obj, optimizer=optimizer, metrics=['accuracy'])
 
-checkpoint_path = f"movinet_{model_id}_stream_checkpoint1/cptk-1"
+checkpoint_path = f"movinet_{model_id}_stream_checkpoint2/cptk-1"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -136,7 +136,7 @@ stream_model.set_weights(weights)
 stream_model.get_weights()[0] 
 model.get_weights()[0]
 
-saved_model_dir=f"my_model1/movinet_{model_id}_stream_UCF101"
+saved_model_dir=f"my_model2/movinet_{model_id}_stream_UCF101"
 export_saved_model.export_saved_model(
     model=stream_model,
     input_shape=input_shape,
@@ -145,9 +145,9 @@ export_saved_model.export_saved_model(
     bundle_input_init_states_fn=False)
 
 model_id = 'a1'
-saved_model_dir=f"my_model1/movinet_{model_id}_stream_UCF101"
+saved_model_dir=f"my_model2/movinet_{model_id}_stream_UCF101"
 converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
 tflite_model = converter.convert()
 
-with open(f'movinet_{model_id}_stream1.tflite', 'wb') as f:
+with open(f'movinet_{model_id}_stream2.tflite', 'wb') as f:
     f.write(tflite_model)
