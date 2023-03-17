@@ -1,37 +1,14 @@
 import os
-
-import tqdm
-import random
-import pathlib
-import itertools
-import collections
-
-import cv2
-import numpy as np
-import remotezip as rz
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-import keras
 import tensorflow as tf
-import tensorflow_hub as hub
-from tensorflow.keras import layers
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import SparseCategoricalCrossentropy
-
 import tensorflow_datasets as tfds
-from official.vision.configs import video_classification
-from official.projects.movinet.configs import movinet as movinet_configs
 from official.projects.movinet.modeling import movinet
-from official.projects.movinet.modeling import movinet_layers
 from official.projects.movinet.modeling import movinet_model
 from official.projects.movinet.tools import export_saved_model
 
 
+# Download and Load UCF-101 Data
 dataset_name = 'ucf101'
-
 builder = tfds.builder(dataset_name)
-
 config = tfds.download.DownloadConfig(verify_ssl=False)
 builder.download_and_prepare(download_config=config)
 
@@ -51,19 +28,24 @@ batch_size = 8
 num_frames = 8
 frame_stride = 10
 resolution = 172
+model_id = 'a1' #---> You can change this for a0 (light), or a2 (robust)
+resolution = 172
+num_epochs = 2
+num_classes=101
+
 
 def format_features(features):
-  video = features['video']
-  video = video[:, ::frame_stride]
-  video = video[:, :num_frames]
+    video = features['video']
+    video = video[:, ::frame_stride]
+    video = video[:, :num_frames]
 
-  video = tf.reshape(video, [-1, video.shape[2], video.shape[3], 3])
-  video = tf.image.resize(video, (resolution, resolution))
-  video = tf.reshape(video, (-1, num_frames, resolution, resolution, 3))
-  video = tf.cast(video, tf.float32) / 255.
+    video = tf.reshape(video, [-1, video.shape[2], video.shape[3], 3])
+    video = tf.image.resize(video, (resolution, resolution))
+    video = tf.reshape(video, (-1, num_frames, resolution, resolution, 3))
+    video = tf.cast(video, tf.float32) / 255.
 
-  label = tf.one_hot(features['label'], num_classes)
-  return (video, label)
+    label = tf.one_hot(features['label'], num_classes)
+    return (video, label)
  
 train_dataset = builder.as_dataset(
     split='train',
@@ -84,9 +66,6 @@ test_dataset = test_dataset.map(
     deterministic=True)
 test_dataset = test_dataset.prefetch(2)
 
-
-model_id = 'a1' #---> You can change this for a0 (light), or a2 (robust)
-resolution = 172
 
 tf.keras.backend.clear_session()
 
@@ -124,9 +103,7 @@ def build_classifier(batch_size, num_frames, resolution, backbone, num_classes, 
 
     return model
 
-model = build_classifier(batch_size, num_frames, resolution, backbone, 101)
-
-num_epochs = 2
+model = build_classifier(batch_size, num_frames, resolution, backbone, num_classes)
 
 train_steps = num_examples['train'] // batch_size
 total_train_steps = train_steps * num_epochs
@@ -191,7 +168,7 @@ stream_backbone = movinet.Movinet(
 stream_backbone.trainable=False
 stream_model = movinet_model.MovinetClassifier(
     backbone=stream_backbone,
-    num_classes=101,
+    num_classes=num_classes,
     output_states=True)
 stream_model.build([1, 1, 172, 172, 3])
 stream_model.set_weights(weights)
