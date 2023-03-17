@@ -130,3 +130,10 @@ dmypy.json
 
 # pre-trained checkpoints
 movinet*
+
+# Videos / GIF
+*.mp4
+*.avi
+*.mkv
+
+*.gif
