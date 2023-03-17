@@ -6,7 +6,7 @@ from collections import deque
 # Load TFLite Model
 model_id = 'a1'
 # Create the interpreter and signature runner
-interpreter = tf.lite.Interpreter(model_path=f'movinet_{model_id}_stream.tflite')
+interpreter = tf.lite.Interpreter(model_path=f'movinet_{model_id}_stream1.tflite')
 runner = interpreter.get_signature_runner()
 
 init_states = {
@@ -17,7 +17,7 @@ del init_states['image']
 
 
 #################### Video Stream ###############################
-cap = cv2.VideoCapture('archery.mp4')
+cap = cv2.VideoCapture('UCF101_subset/test/BaseballPitch/v_BaseballPitch_g08_c07.avi')
 
 original_video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 original_video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
