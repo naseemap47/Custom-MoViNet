@@ -1,12 +1,13 @@
 import cv2
 import tensorflow as tf
 from collections import deque
+import os
 
 
 # Load TFLite Model
 model_id = 'a1'
 # Create the interpreter and signature runner
-interpreter = tf.lite.Interpreter(model_path=f'movinet_{model_id}_stream1.tflite')
+interpreter = tf.lite.Interpreter(model_path=f'movinet_{model_id}_stream2.tflite')
 runner = interpreter.get_signature_runner()
 
 init_states = {
@@ -17,7 +18,7 @@ del init_states['image']
 
 
 #################### Video Stream ###############################
-cap = cv2.VideoCapture('UCF101_subset/test/BaseballPitch/v_BaseballPitch_g08_c07.avi')
+cap = cv2.VideoCapture('dataset/test/NonViolence/NV_8010.avi')
 
 original_video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 original_video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -34,12 +35,9 @@ image_size = (172, 172)
 
 frames_queue = deque(maxlen=8)
 
-with tf.io.gfile.GFile("ufc101_label_map.txt") as f:
-    lines = f.readlines()
-    KINETICS_600_LABELS_LIST = [line.strip() for line in lines]
-    KINETICS_600_LABELS = tf.constant(KINETICS_600_LABELS_LIST)
+label_map = sorted(os.listdir('dataset/test'))
 
-def get_top_k(probs, k=5, label_map=KINETICS_600_LABELS):
+def get_top_k(probs, k=5, label_map=label_map):
     """Outputs the top k model labels and probabilities on the given video."""
     top_predictions = tf.argsort(probs, axis=-1, direction='DESCENDING')[:k]
     top_labels = tf.gather(label_map, top_predictions, axis=-1)
