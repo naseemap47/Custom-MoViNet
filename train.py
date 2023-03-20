@@ -26,8 +26,11 @@ ap.add_argument("--save_ckpt", type=str, required=True,
 ap.add_argument("--export", type=str, required=True,
                 help="path to export model")
 ap.add_argument("-id", "--model_id", type=str, default='a1',
-                help="path to export model")
+                help="model type, eg: a2")
 ap.add_argument("-o", "--save", type=str, required=True,
+                help="path to export tflite model")
+ap.add_argument("-f", "--float", type=int, default=32,
+                choices=[32, 16],
                 help="path to export tflite model")
 args = vars(ap.parse_args())
 
@@ -172,6 +175,9 @@ print(f'[INFO] Exported model: {saved_model_dir}')
 
 # To TFLite
 converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+if args['float'] == 16:
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.target_spec.supported_types = [tf.float16]
 tflite_model = converter.convert()
 with open(path_save_tflite, 'wb') as f:
     f.write(tflite_model)
