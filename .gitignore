@@ -137,3 +137,13 @@ movinet*
 *.mkv
 
 *.gif
+
+# Model
+*.tflite
+
+# Checkpoints
+checkpoint
+*/ckpt-*
+
+*/*/variables*
+*/*/*.pb
