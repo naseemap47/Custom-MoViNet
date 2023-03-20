@@ -19,11 +19,11 @@ ap.add_argument("-s", "--resolution", type=int, default=172,
                 help="Video resolution")
 ap.add_argument("-e", "--num_epochs", type=int, default=5,
                 help="number of training epochs")
-ap.add_argument("-pre_ckpt", "--pre_checkpoint", type=str, required=True,
+ap.add_argument("--pre_ckpt", type=str, required=True,
                 help="path to pre-trained checkpoint dir")
-ap.add_argument("-save_ckpt", "--save_checkpoint", type=str, required=True,
-                help="path to save trained checkpoint eg: checkpoint/ckpt-1")
-ap.add_argument("-export", "--export_dir", type=str, required=True,
+ap.add_argument("--save_ckpt", type=str, required=True,
+                help="path to save trained checkpoint eg: checkpoints/ckpt-1")
+ap.add_argument("--export", type=str, required=True,
                 help="path to export model")
 ap.add_argument("-id", "--model_id", type=str, default='a1',
                 help="path to export model")
@@ -50,12 +50,12 @@ num_epochs = args['num_epochs']
 num_classes = len(os.listdir(os.path.join(args["data"], 'test')))
 
 # checkpoint_dir = f'movinet_{model_id}_stream'
-checkpoint_dir = args['pre_checkpoint']
+pre_ckpt_dir = args['pre_ckpt']
 # checkpoint_path = f"movinet_{model_id}_stream_checkpoint1/ckpt-1"
-checkpoint_path = args['save_checkpoint']
+save_ckpt_dir = args['save_ckpt']
 # saved_model_dir=f"my_model/movinet_{model_id}_stream_violance"
-saved_model_dir = args['export_dir']
-# path_save_tflite = f'movinet_{model_id}_stream_violence.tflite'
+saved_model_dir = args['export']
+# path_save_tflite = 'model.tflite'
 path_save_tflite = args['save']
 
 output_signature = (tf.TensorSpec(shape = (None, None, None, 3), dtype = tf.float32),
@@ -97,8 +97,7 @@ model.build([1, 1, 1, 1, 3])
 # !wget https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a1_stream.tar.gz -O movinet_a1_stream.tar.gz -q
 # !tar -xvf movinet_a1_stream.tar.gz
 
-# checkpoint_dir = f'movinet_{model_id}_stream'
-checkpoint_path = tf.train.latest_checkpoint(checkpoint_dir)
+checkpoint_path = tf.train.latest_checkpoint(pre_ckpt_dir)
 checkpoint = tf.train.Checkpoint(model=model)
 status = checkpoint.restore(checkpoint_path)
 status.assert_existing_objects_matched()
@@ -112,22 +111,21 @@ def build_classifier(batch_size, num_frames, resolution, backbone, num_classes, 
 
     return model
 
+# Build Model
 model = build_classifier(batch_size, num_frames, resolution, backbone, num_classes)
-
-# num_epochs = 2
-
 loss_obj = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
 optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
-
 model.compile(loss=loss_obj, optimizer=optimizer, metrics=['accuracy'])
 
-# checkpoint_path = f"movinet_{model_id}_stream_checkpoint1/cptk-1"
-checkpoint_dir = os.path.dirname(checkpoint_path)
-
-cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+# Callback
+cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=save_ckpt_dir,
                                                  save_weights_only=True,
                                                  verbose=1,)
+
+print('Number of Classes: ', num_classes)
+print('Total Number of Epochs: ', num_epochs)
+print('Batch Size: ', batch_size)
+
 results = model.fit(train_ds,
                     validation_data=test_ds,
                     epochs=num_epochs,
@@ -138,7 +136,6 @@ results = model.fit(train_ds,
 print(results.history)
 
 weights=model.get_weights()
-
 input_shape = [1, 1, 172, 172, 3]
 batch_size, num_frames, image_size, = input_shape[:3]
 
@@ -164,18 +161,18 @@ stream_model.set_weights(weights)
 stream_model.get_weights()[0] 
 model.get_weights()[0]
 
-# saved_model_dir=f"my_model/movinet_{model_id}_stream_violance"
+# Export Model
 export_saved_model.export_saved_model(
     model=stream_model,
     input_shape=input_shape,
     export_path=saved_model_dir,
     causal=True,
     bundle_input_init_states_fn=False)
+print(f'[INFO] Exported model: {saved_model_dir}')
 
-# model_id = 'a1'
-# saved_model_dir=f"my_model3/movinet_{model_id}_stream_UCF101"
+# To TFLite
 converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
 tflite_model = converter.convert()
-
 with open(path_save_tflite, 'wb') as f:
     f.write(tflite_model)
+print(f'[INFO] Saved TFLite model to : {path_save_tflite}')
