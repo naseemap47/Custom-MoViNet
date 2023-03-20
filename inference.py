@@ -2,14 +2,30 @@ import cv2
 import tensorflow as tf
 from collections import deque
 import os
+import argparse
 
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--tflite", type=str, required=True,
+                help="path to tflite model")
+ap.add_argument("-i", "--source", type=str, required=True,
+                help="path to video or cam-id")
+ap.add_argument("-s", "--resolution", type=int, default=172,
+                help="Video resolution")
+ap.add_argument("-n", "--num_frames", type=int, default=8,
+                help="num_frames")
+ap.add_argument("-d", "--data", type=str, required=True,
+                help="path to data/test or data/train dir")
+ap.add_argument("--save", action='store_true',
+                help="Save video")
+
+args = vars(ap.parse_args())
+video_path = args["source"]
 
 # Load TFLite Model
-model_id = 'a1'
 # Create the interpreter and signature runner
-interpreter = tf.lite.Interpreter(model_path=f'movinet_{model_id}_stream2.tflite')
+interpreter = tf.lite.Interpreter(model_path=args["tflite"])
 runner = interpreter.get_signature_runner()
-
 init_states = {
     name: tf.zeros(x['shape'], dtype=x['dtype'])
     for name, x in runner.get_input_details().items()
@@ -18,24 +34,25 @@ del init_states['image']
 
 
 #################### Video Stream ###############################
-cap = cv2.VideoCapture('dataset/test/NonViolence/NV_8010.avi')
+if video_path.isnumeric():
+    video_path = int(video_path)
+cap = cv2.VideoCapture(video_path)
 
 original_video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 original_video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps = cap.get(cv2.CAP_PROP_FPS)
 
 # Write Video
-save = False
-if save:
+if args['save']:
     out_vid = cv2.VideoWriter(f'output.mp4', 
                          cv2.VideoWriter_fourcc(*'mp4v'),
                          fps, (original_video_width, original_video_height))
 
-image_size = (172, 172)
+image_size = (args['resolution'], args['resolution'])
 
-frames_queue = deque(maxlen=8)
+frames_queue = deque(maxlen=args['num_frames'])
 
-label_map = sorted(os.listdir('dataset/test'))
+label_map = sorted(os.listdir(args['data']))
 
 def get_top_k(probs, k=5, label_map=label_map):
     """Outputs the top k model labels and probabilities on the given video."""
@@ -53,7 +70,7 @@ while True:
 
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     frames_queue.append(img_rgb)
-    if len(frames_queue) == 8:
+    if len(frames_queue) == args['num_frames']:
 
         img_to_tensor = tf.convert_to_tensor(frames_queue, dtype=tf.uint8)
         # print(type(img_to_tensor))
@@ -77,7 +94,7 @@ while True:
         cv2.putText(img, f'{top_k[0][0]} {top_k[0][1]:.3}', (50, 60), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
     
     # Write Video
-    if save:
+    if args['save']:
         out_vid.write(img)
 
     cv2.imshow('img', img)
@@ -85,6 +102,6 @@ while True:
         break
 
 cap.release()
-if save:
+if args['save']:
     out_vid.release()
 cv2.destroyAllWindows()
