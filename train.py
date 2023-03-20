@@ -5,19 +5,58 @@ from official.projects.movinet.modeling import movinet_model
 from official.projects.movinet.tools import export_saved_model
 import pathlib
 from utils import FrameGenerator
+import argparse
+
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-i", "--data", type=str, required=True,
+                help="path to data dir")
+ap.add_argument("-b", "--batch_size", type=int, default=8,
+                help="batch_size")
+ap.add_argument("-n", "--num_frames", type=int, default=8,
+                help="num_frames")
+ap.add_argument("-s", "--resolution", type=int, default=172,
+                help="Video resolution")
+ap.add_argument("-e", "--num_epochs", type=int, default=5,
+                help="number of training epochs")
+ap.add_argument("-pre_ckpt", "--pre_checkpoint", type=str, required=True,
+                help="path to pre-trained checkpoint dir")
+ap.add_argument("-save_ckpt", "--save_checkpoint", type=str, required=True,
+                help="path to save trained checkpoint eg: checkpoint/ckpt-1")
+ap.add_argument("-export", "--export_dir", type=str, required=True,
+                help="path to export model")
+ap.add_argument("-id", "--model_id", type=str, default='a1',
+                help="path to export model")
+ap.add_argument("-o", "--save", type=str, required=True,
+                help="path to export tflite model")
+args = vars(ap.parse_args())
 
 
 # Load Data
-path_dir = pathlib.Path('dataset')
+path_dir = pathlib.Path(args["data"])
 subset_paths = {}
-for split_name in os.listdir('dataset'):
+for split_name in os.listdir(args["data"]):
     split_dir = path_dir / split_name
     subset_paths[split_name] = split_dir
-print(subset_paths)
+print('Data Dict:', subset_paths)
 
+batch_size = args['batch_size']
+num_frames = args['num_frames']
 
-batch_size = 8
-num_frames = 8
+resolution = args['resolution']
+# model_id = 'a1' #---> You can change this for a0 (light), or a2 (robust)
+model_id = args['model_id']
+num_epochs = args['num_epochs']
+num_classes = len(os.listdir(os.path.join(args["data"], 'test')))
+
+# checkpoint_dir = f'movinet_{model_id}_stream'
+checkpoint_dir = args['pre_checkpoint']
+# checkpoint_path = f"movinet_{model_id}_stream_checkpoint1/ckpt-1"
+checkpoint_path = args['save_checkpoint']
+# saved_model_dir=f"my_model/movinet_{model_id}_stream_violance"
+saved_model_dir = args['export_dir']
+# path_save_tflite = f'movinet_{model_id}_stream_violence.tflite'
+path_save_tflite = args['save']
 
 output_signature = (tf.TensorSpec(shape = (None, None, None, 3), dtype = tf.float32),
                     tf.TensorSpec(shape = (), dtype = tf.int16))
@@ -35,17 +74,6 @@ for frames, labels in train_ds.take(10):
 
 print(f"Shape: {frames.shape}")
 print(f"Label: {labels.shape}")
-
-
-
-batch_size = 8
-num_frames = 8
-frame_stride = 10
-resolution = 172
-model_id = 'a1' #---> You can change this for a0 (light), or a2 (robust)
-resolution = 172
-num_epochs = 2
-num_classes=10
 
 
 tf.keras.backend.clear_session()
@@ -69,7 +97,7 @@ model.build([1, 1, 1, 1, 3])
 # !wget https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a1_stream.tar.gz -O movinet_a1_stream.tar.gz -q
 # !tar -xvf movinet_a1_stream.tar.gz
 
-checkpoint_dir = f'movinet_{model_id}_stream'
+# checkpoint_dir = f'movinet_{model_id}_stream'
 checkpoint_path = tf.train.latest_checkpoint(checkpoint_dir)
 checkpoint = tf.train.Checkpoint(model=model)
 status = checkpoint.restore(checkpoint_path)
@@ -86,7 +114,7 @@ def build_classifier(batch_size, num_frames, resolution, backbone, num_classes, 
 
 model = build_classifier(batch_size, num_frames, resolution, backbone, num_classes)
 
-num_epochs = 2
+# num_epochs = 2
 
 loss_obj = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
@@ -94,7 +122,7 @@ optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
 
 model.compile(loss=loss_obj, optimizer=optimizer, metrics=['accuracy'])
 
-checkpoint_path = f"movinet_{model_id}_stream_checkpoint2/cptk-1"
+# checkpoint_path = f"movinet_{model_id}_stream_checkpoint1/cptk-1"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -136,7 +164,7 @@ stream_model.set_weights(weights)
 stream_model.get_weights()[0] 
 model.get_weights()[0]
 
-saved_model_dir=f"my_model2/movinet_{model_id}_stream_UCF101"
+# saved_model_dir=f"my_model/movinet_{model_id}_stream_violance"
 export_saved_model.export_saved_model(
     model=stream_model,
     input_shape=input_shape,
@@ -144,10 +172,10 @@ export_saved_model.export_saved_model(
     causal=True,
     bundle_input_init_states_fn=False)
 
-model_id = 'a1'
-saved_model_dir=f"my_model2/movinet_{model_id}_stream_UCF101"
+# model_id = 'a1'
+# saved_model_dir=f"my_model3/movinet_{model_id}_stream_UCF101"
 converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
 tflite_model = converter.convert()
 
-with open(f'movinet_{model_id}_stream2.tflite', 'wb') as f:
+with open(path_save_tflite, 'wb') as f:
     f.write(tflite_model)
