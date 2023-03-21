@@ -3,7 +3,7 @@ import tensorflow as tf
 from collections import deque
 import os
 import argparse
-
+import time
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--tflite", type=str, required=True,
@@ -62,6 +62,8 @@ def get_top_k(probs, k=5, label_map=label_map):
     top_probs = tf.gather(probs, top_predictions, axis=-1).numpy()
     return tuple(zip(top_labels, top_probs))
 
+p_time = 0
+
 while True:
     success, img = cap.read()
     if not success:
@@ -93,6 +95,13 @@ while True:
         #     print(label, prob)
         cv2.putText(img, f'{top_k[0][0]} {top_k[0][1]:.3}', (50, 60), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
     
+    # FPS
+    c_time = time.time()
+    fps_ = 1/(c_time-p_time)
+    p_time = c_time
+
+    print(fps_)
+
     # Write Video
     if args['save']:
         out_vid.write(img)
