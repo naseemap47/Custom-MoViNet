@@ -15,7 +15,6 @@ ap.add_argument("-r", "--ratio", type=float, default=0.1,
                 help="test ratio 0<ratio<1")
 
 args = vars(ap.parse_args())
-print(args)
 path_data_dir = args["data_dir"]
 path_save_dir = args['save']
 ratio = args['ratio']
