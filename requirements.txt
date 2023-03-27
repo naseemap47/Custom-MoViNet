@@ -1,0 +1,7 @@
+# python 3.9.16
+remotezip
+tqdm
+opencv-python==4.5.2.52
+opencv-python-headless==4.5.2.52
+tf-models-official
+protobuf==3.19.6
