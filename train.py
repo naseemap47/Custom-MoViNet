@@ -31,7 +31,7 @@ ap.add_argument("-o", "--save", type=str, required=True,
                 help="path to export tflite model")
 ap.add_argument("-f", "--float", type=int, default=32,
                 choices=[32, 16],
-                help="path to export tflite model")
+                help="model quantization")
 args = vars(ap.parse_args())
 
 
